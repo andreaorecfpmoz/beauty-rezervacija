@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Beauty Studio Renea</title>
+
+  <!-- Fontovi i stil -->
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600&family=Inter:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <div class="top-image">
+      <img src="obrve3.jpg" alt="Lice - Beauty Studio Renea" />
+    </div>
+
+    <div class="card">
+      <div class="logo">
+        <h1><span style="color:#9c4f4f">BEAUTY STUDIO</span> <span style="color:#d99a9a">Renea</span></h1>
+        <p class="subtitle">Rezerviraj termin</p>
+        <p class="studio-info">📍 Domovinskog rata 10</p>
+        <p class="studio-info">📞 063 586 705</p>
+      </div>
+
+      <form id="form">
+        <label for="name">Ime i prezime</label>
+        <input type="text" id="name" name="name" required />
+
+        <label for="phone">Broj telefona</label>
+        <input type="tel" id="phone" name="phone" required placeholder="+387..." />
+
+        <label for="service">Usluga</label>
+        <select id="service" name="service" required>
+          <option value="">Odaberi uslugu</option>
+
+          <optgroup label="💄 Šminkanje">
+            <option value="Šminkanje - 50 KM">Šminkanje - 50 KM</option>
+          </optgroup>
+
+          <optgroup label="🧵 Threading">
+            <option value="Čupanje obrva - 15 KM">Čupanje obrva - 15 KM</option>
+            <option value="Čupanje + farbanje - 20 KM">Čupanje + farbanje - 20 KM</option>
+            <option value="Čupanje + farbanje s Hennom - 30 KM">Čupanje + farbanje s Hennom - 30 KM</option>
+            <option value="Threading cijelog lica - 30 KM">Threading cijelog lica - 30 KM</option>
+            <option value="Nadusnice - 5 KM">Nadusnice - 5 KM</option>
+            <option value="Nadusnice + brada - 8 KM">Nadusnice + brada - 8 KM</option>
+          </optgroup>
+
+          <optgroup label="🍯 Depilacija (vosak)">
+            <option value="Ruke - 15 KM">Ruke - 15 KM</option>
+            <option value="Cijele noge - 35 KM">Cijele noge - 35 KM</option>
+            <option value="Pola nogu (do koljena) - 15 KM">Pola nogu (do koljena) - 15 KM</option>
+            <option value="Pola nogu (iznad koljena) - 15 KM">Pola nogu (iznad koljena) - 15 KM</option>
+            <option value="Stomak - 10 KM">Stomak - 10 KM</option>
+          </optgroup>
+        </select>
+
+        <label for="date">Datum</label>
+        <input type="text" id="date" name="date" placeholder="dd. mm. gggg." required />
+
+        <!-- Prikaz slobodnih termina -->
+        <div id="slobodni-termini" class="termini-container"></div>
+
+        <div class="buttons">
+          <button type="submit" class="submit-btn">Pošalji</button>
+          <button type="reset" class="cancel-btn">Otkaži</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Prilagođena poruka -->
+  <div id="custom-alert" style="
+    display: none;
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 1rem 2rem;
+    background-color: #28a745;
+    color: white;
+    font-weight: bold;
+    font-size: 1rem;
+    border-radius: 8px;
+    z-index: 9999;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  ">
+    <span id="custom-alert-message"></span>
+  </div>
+
+  <!-- Skripte -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="script.js"></script>
+</body>
+</html>
