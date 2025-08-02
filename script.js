@@ -23,6 +23,13 @@ function formatLocalISO(d) {
   return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
 }
 
+// ⏱️ Trajanje po usluzi
+function getTrajanjeZaUslugu(usluga) {
+  if (!usluga) return 30;
+  usluga = usluga.toLowerCase();
+  return (usluga.includes("šminkanje") || usluga.includes("cijele noge")) ? 60 : 30;
+}
+
 // 📥 Učitaj zauzete termine
 async function ucitajZauzeteTermine() {
   try {
@@ -31,23 +38,31 @@ async function ucitajZauzeteTermine() {
 
     zauzetiTermini = podaci
       .filter(p => p.Termin && typeof p.Termin === "string")
-      .map(p => {
-        const d = new Date(p.Termin);
-        return formatLocalISO(d);
-      });
+      .map(p => ({
+        iso: formatLocalISO(new Date(p.Termin)),
+        usluga: p.Usluga || ""
+      }));
 
     const grouped = {};
-    zauzetiTermini.forEach(t => {
-      const date = t.split("T")[0];
-      if (!grouped[date]) grouped[date] = [];
-      grouped[date].push(t);
+    zauzetiTermini.forEach(({ iso }) => {
+      const [dateStr] = iso.split("T");
+      if (!grouped[dateStr]) grouped[dateStr] = [];
+      grouped[dateStr].push(iso);
     });
 
     const zauzetiDatumi = new Set();
-    Object.entries(grouped).forEach(([dateStr, termini]) => {
+
+    Object.entries(grouped).forEach(([dateStr, terminiZaDan]) => {
       const datum = new Date(dateStr);
-      const brojSlotova = generirajTermineZaDan(30, datum).length;
-      if (termini.length >= brojSlotova) {
+      const slobodniSlotovi = generirajTermineZaDan(30, datum).length;
+      let zauzetoMinuta = 0;
+
+      terminiZaDan.forEach(tIso => {
+        const tObj = zauzetiTermini.find(z => z.iso === tIso);
+        zauzetoMinuta += getTrajanjeZaUslugu(tObj?.usluga);
+      });
+
+      if (zauzetoMinuta >= slobodniSlotovi * 30) {
         zauzetiDatumi.add(dateStr);
       }
     });
@@ -79,12 +94,6 @@ async function ucitajZauzeteTermine() {
   }
 }
 
-function getTrajanjeZaUslugu(usluga) {
-  if (!usluga) return 30;
-  usluga = usluga.toLowerCase();
-  return (usluga.includes("šminkanje") || usluga.includes("cijele noge")) ? 60 : 30;
-}
-
 // 📅 Generiraj termine
 function generirajTermineZaDan(trajanje, customDate = null) {
   const termini = [];
@@ -96,7 +105,8 @@ function generirajTermineZaDan(trajanje, customDate = null) {
 
   while (datum.getHours() < radnoVrijemeEnd) {
     const iso = formatLocalISO(new Date(datum));
-    if (!zauzetiTermini.includes(iso)) {
+    const postoji = zauzetiTermini.some(z => z.iso === iso);
+    if (!postoji) {
       const prikaz = datum.toLocaleTimeString("hr-HR", {
         hour: "2-digit",
         minute: "2-digit"
@@ -160,27 +170,53 @@ function postaviFormu() {
       return;
     }
 
+    const formData = new FormData(this);
+    const usluga = formData.get("service");
+    const trajanje = getTrajanjeZaUslugu(usluga);
+    const terminStart = new Date(odabraniTermin);
+    const terminEnd = new Date(terminStart);
+    terminEnd.setMinutes(terminEnd.getMinutes() + trajanje);
+
     let block = false;
+
     for (let i = 0; i < 3; i++) {
-      await ucitajZauzeteTermine();
-      if (zauzetiTermini.includes(odabraniTermin)) {
-        block = true;
-        break;
+      const res = await fetch("https://sheetdb.io/api/v1/jw14ox2kt0nyb");
+      const podaci = await res.json();
+
+      const zauzeti = podaci
+        .filter(p => p.Termin && typeof p.Termin === "string")
+        .map(p => {
+          const start = new Date(p.Termin);
+          const end = new Date(start);
+          end.setMinutes(end.getMinutes() + getTrajanjeZaUslugu(p.Usluga || ""));
+          return { start, end };
+        });
+
+      for (const { start, end } of zauzeti) {
+        const preklapanje =
+          (terminStart >= start && terminStart < end) ||
+          (terminEnd > start && terminEnd <= end) ||
+          (terminStart <= start && terminEnd >= end);
+
+        if (preklapanje) {
+          block = true;
+          break;
+        }
       }
+
+      if (block) break;
       await new Promise(r => setTimeout(r, 400));
     }
 
     if (block) {
-      prikaziPoruku("❗ Termin je upravo postao zauzet. Molimo odaberite drugi.", false);
+      prikaziPoruku("❗ Termin je zauzet (ili se preklapa). Odaberite drugi.", false);
       prikaziSlobodneTermine();
       submitBtn.disabled = false;
       submitBtn.textContent = "Pošalji";
       return;
     }
 
-    const formData = new FormData(this);
     const brojTelefona = formData.get("phone");
-
     if (!brojTelefona || brojTelefona.trim() === "") {
       prikaziPoruku("❗ Molimo unesite broj telefona.", false);
       submitBtn.disabled = false;
@@ -191,7 +227,7 @@ function postaviFormu() {
     const data = {
       Ime: formData.get("name"),
       Broj: brojTelefona,
-      Usluga: formData.get("service"),
+      Usluga: usluga,
       Termin: odabraniTermin
     };
 
@@ -200,25 +236,25 @@ function postaviFormu() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data })
     })
-    .then(res => {
-      if (res.ok) {
-        prikaziPoruku("✅ Rezervacija uspješna!");
-        this.reset();
-        document.getElementById("slobodni-termini").innerHTML = "";
-        odabraniTermin = null;
-        ucitajZauzeteTermine();
-      } else {
-        prikaziPoruku("Greška pri slanju.", false);
-      }
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Pošalji";
-    })
-    .catch(err => {
-      console.error("Greška:", err);
-      prikaziPoruku("Došlo je do greške.", false);
-      submitBtn.disabled = false;
-      submitBtn.textContent = "Pošalji";
-    });
+      .then(res => {
+        if (res.ok) {
+          prikaziPoruku("✅ Rezervacija uspješna!");
+          this.reset();
+          document.getElementById("slobodni-termini").innerHTML = "";
+          odabraniTermin = null;
+          ucitajZauzeteTermine();
+        } else {
+          prikaziPoruku("Greška pri slanju.", false);
+        }
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Pošalji";
+      })
+      .catch(err => {
+        console.error("Greška:", err);
+        prikaziPoruku("Došlo je do greške.", false);
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Pošalji";
+      });
   });
 }
 
