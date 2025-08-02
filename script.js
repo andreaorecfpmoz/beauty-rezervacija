@@ -195,7 +195,8 @@ function postaviFormu() {
       Usluga: formData.get("service"),
       Termin: odabraniTermin
     };
-    fetch("https://beauty-rezervacija.vercel.app/api/rezerviraj", {
+
+    fetch("https://beauty-backend-n8xp.onrender.com/api/rezerviraj", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ data })
