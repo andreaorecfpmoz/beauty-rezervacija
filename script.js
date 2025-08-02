@@ -160,7 +160,6 @@ function postaviFormu() {
       return;
     }
 
-    // 🔁 Višestruka provjera termina (3x)
     let block = false;
     for (let i = 0; i < 3; i++) {
       await ucitajZauzeteTermine();
